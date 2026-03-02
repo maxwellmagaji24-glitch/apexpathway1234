@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 
 const mockData = {
   summary: {
@@ -18,7 +18,7 @@ const mockData = {
   ],
 };
 
-const formatNaira = (kobo) =>
+const formatNaira = (kobo : number) =>
   "₦ " + (kobo / 100).toLocaleString("en-NG", { minimumFractionDigits: 2 });
 
 const STATUS_CONFIG = {
@@ -29,32 +29,63 @@ const STATUS_CONFIG = {
 
 const PERIODS = ["Last 7 Days", "Last 30 Days", "Last 90 Days", "All Time"];
 
+// FIX 1: Moved SortIcon outside the parent component to prevent
+// unnecessary re-creation on every render.
+const SortIcon = ({ col, sortBy, sortDir }) => {
+  if (sortBy !== col) return <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: 4 }}>↕</span>;
+  return <span style={{ color: "#fff", marginLeft: 4 }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
+};
+
 export default function InstructorAnalytics() {
   const [period, setPeriod] = useState("Last 30 Days");
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState("desc");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   const { summary, courses } = mockData;
+
+  // FIX 2: Close dropdown when clicking outside
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownOpen]);
 
   const sorted = useMemo(() => {
     if (!sortBy) return courses;
     return [...courses].sort((a, b) => {
-      const va = sortBy === "students" ? a.studentCount : a.revenueKobo;
-      const vb = sortBy === "students" ? b.studentCount : b.revenueKobo;
+      // FIX 3: Explicit checks for both sort keys instead of implicit fallthrough
+      let va, vb;
+      if (sortBy === "students") {
+        va = a.studentCount;
+        vb = b.studentCount;
+      } else if (sortBy === "earnings") {
+        va = a.revenueKobo;
+        vb = b.revenueKobo;
+      } else {
+        return 0;
+      }
       return sortDir === "asc" ? va - vb : vb - va;
     });
   }, [courses, sortBy, sortDir]);
 
-  const toggleSort = (col) => {
-    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortBy(col); setSortDir("desc"); }
-  };
-
-  const SortIcon = ({ col }) => {
-    if (sortBy !== col) return <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: 4 }}>↕</span>;
-    return <span style={{ color: "#fff", marginLeft: 4 }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
-  };
+  // FIX 4: Wrapped in useCallback to avoid recreation on every render
+  const toggleSort = useCallback((col) => {
+    setSortBy(prev => {
+      if (prev === col) {
+        setSortDir(d => d === "asc" ? "desc" : "asc");
+        return prev;
+      }
+      setSortDir("desc");
+      return col;
+    });
+  }, []);
 
   return (
     <div style={{
@@ -90,7 +121,8 @@ export default function InstructorAnalytics() {
             </h1>
           </div>
 
-          <div style={{ position: "relative" }}>
+          {/* FIX 2: Added ref for outside-click detection */}
+          <div style={{ position: "relative" }} ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(o => !o)}
               style={{
@@ -196,7 +228,8 @@ export default function InstructorAnalytics() {
                     }}
                   >
                     {label}
-                    {col && <SortIcon col={col} />}
+                    {/* FIX 1: Pass props to the extracted SortIcon component */}
+                    {col && <SortIcon col={col} sortBy={sortBy} sortDir={sortDir} />}
                   </th>
                 ))}
               </tr>
