@@ -31,7 +31,7 @@ const PERIODS = ["Last 7 Days", "Last 30 Days", "Last 90 Days", "All Time"];
 
 // FIX 1: Moved SortIcon outside the parent component to prevent
 // unnecessary re-creation on every render.
-const SortIcon = ({ col : string , sortBy : string  , sortDir : string  }) => {
+const SortIcon =  ({ col, sortBy, sortDir }: { col: string; sortBy: string; sortDir: string }) => {
   if (sortBy !== col) return <span style={{ color: "rgba(255,255,255,0.2)", marginLeft: 4 }}>↕</span>;
   return <span style={{ color: "#fff", marginLeft: 4 }}>{sortDir === "asc" ? "↑" : "↓"}</span>;
 };
