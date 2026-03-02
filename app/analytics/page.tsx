@@ -48,7 +48,7 @@ export default function InstructorAnalytics() {
   // FIX 2: Close dropdown when clicking outside
   useEffect(() => {
     if (!dropdownOpen) return;
-    const handleClickOutside = (e) => {
+    const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
