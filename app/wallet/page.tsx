@@ -1,88 +1,190 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useUser } from '../context/UserContext';
+import { InstructorRoute } from '../components/RouteGuard';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import { authApi, Bank, PayoutProfile, InstructorEarningsResponse, PayoutRequest } from '../api/authApi';
 
-export default function Wallet() {
-  const [userName] = useState("Maxwell");
-  const [userAvatar, setUserAvatar] = useState<string | null>(null);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+function WalletContent() {
+  const { user } = useUser();
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
   const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
-  // Mock data - replace with API calls
-  const walletData = {
-    currentBalance: 245400.00,
-    grossSales: 350000,
-    totalProfit: 245000,
-    totalPaid: 50000,
-    hasBankAccount: true,
-    bankDetails: {
-      bankName: "ZENITH BANK",
-      accountName: "JOHN DOE",
-      accountNumberLast4: "4321"
+  const [payoutProfile, setPayoutProfile] = useState<PayoutProfile | null>(null);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(false);
+
+  const [payoutForm, setPayoutForm] = useState({ accountName: "", bank: "", bankCode: "", accountNumber: "" });
+  const [verifiedName, setVerifiedName] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [isSavingPayout, setIsSavingPayout] = useState(false);
+  const [payoutError, setPayoutError] = useState("");
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  const [earnings, setEarnings] = useState<InstructorEarningsResponse | null>(null);
+  const [earningsLoading, setEarningsLoading] = useState(true);
+  const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
+  const [withdrawError, setWithdrawError] = useState("");
+  const [payoutRequests, setPayoutRequests] = useState<PayoutRequest[]>([]);
+
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      setProfileLoading(true);
+      setEarningsLoading(true);
+      try {
+        const [profile, earningsData, payouts] = await Promise.all([
+          authApi.getPayoutProfile(),
+          authApi.getInstructorEarnings(),
+          authApi.getPayoutRequests()
+        ]);
+        setPayoutProfile(profile);
+        setEarnings(earningsData);
+        setPayoutRequests(payouts);
+      } catch (err) {
+        console.error("Failed to load wallet data", err);
+      } finally {
+        setProfileLoading(false);
+        setEarningsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const fetchBanks = async () => {
+    if (banks.length > 0) return;
+    setBanksLoading(true);
+    try {
+      const resp: any = await authApi.getBanks();
+      const banksData: Bank[] = Array.isArray(resp) ? resp : (resp.data || []);
+      // Remove duplicate banks with the same code (e.g., Zenith Bank)
+      const uniqueBanks: Bank[] = Array.from(new Map(banksData.map((b: Bank) => [b.code, b])).values());
+      setBanks(uniqueBanks);
+    } catch (err) {
+      console.error('Failed to load banks', err);
+    } finally {
+      setBanksLoading(false);
     }
   };
 
-  const recentTransactions = [
-    {
-      id: 1,
-      type: "CREDIT",
-      icon: "↓",
-      description: "COURSE SALE",
-      course: "MAT101: Calculus Basics",
-      amount: 15000.00,
-      date: "Oct 12, 2026",
-      status: "SUCCESS"
-    },
-    {
-      id: 2,
-      type: "DEBIT",
-      icon: "↑",
-      description: "PAYOUT REQUEST",
-      course: "To Zenith Bank - **4321",
-      amount: 50000.00,
-      date: "Oct 11, 2026",
-      status: "REQUESTED"
-    },
-    {
-      id: 3,
-      type: "CREDIT",
-      icon: "↓",
-      description: "COURSE SALE",
-      course: "PHY201: Physics",
-      amount: 10000.00,
-      date: "Oct 10, 2026",
-      status: "SUCCESS"
-    },
-    {
-      id: 4,
-      type: "DEBIT",
-      icon: "↑",
-      description: "REFUND PROCESSED",
-      course: "CHM102: Chemistry",
-      amount: 5000.00,
-      date: "Oct 09, 2026",
-      status: "SUCCESS"
+  const openBankModal = () => {
+    fetchBanks();
+    setIsBankModalOpen(true);
+    // Pre-fill if they already have one
+    if (payoutProfile) {
+      setPayoutForm({
+        bank: payoutProfile.bankName,
+        accountName: payoutProfile.accountName,
+        accountNumber: "",
+        bankCode: "" // We don't have the original code saved
+      });
+      setVerifiedName(payoutProfile.accountName);
+    } else {
+      setPayoutForm({ accountName: "", bank: "", bankCode: "", accountNumber: "" });
+      setVerifiedName("");
     }
-  ];
+    setVerifyError("");
+    setPayoutError("");
+  };
 
-  const handleWithdraw = () => {
-    // API call would go here
-    setIsWithdrawModalOpen(false);
-    setShowSuccessMessage(true);
-    setWithdrawAmount("");
-    
-    // Hide success message after 5 seconds
-    setTimeout(() => {
-      setShowSuccessMessage(false);
-    }, 5000);
+  const handleWithdraw = async () => {
+    const amount = parseFloat(withdrawAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setWithdrawError("Please enter a valid amount.");
+      return;
+    }
+
+    if (earnings && (amount * 100) > earnings.currentBalanceKobo) {
+      setWithdrawError("Insufficient available balance.");
+      return;
+    }
+
+    setIsSubmittingWithdrawal(true);
+    setWithdrawError("");
+    try {
+      await authApi.requestWithdrawal(Math.floor(amount * 100));
+      setIsWithdrawModalOpen(false);
+      setShowSuccessMessage(true);
+      setWithdrawAmount("");
+
+      // Refresh data
+      const [earningsData, payouts] = await Promise.all([
+        authApi.getInstructorEarnings(),
+        authApi.getPayoutRequests()
+      ]);
+      setEarnings(earningsData);
+      setPayoutRequests(payouts);
+
+      // Hide success message after 5 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 5000);
+    } catch (err: any) {
+      setWithdrawError(err.message || "Withdrawal request failed.");
+    } finally {
+      setIsSubmittingWithdrawal(false);
+    }
+  };
+
+  const handleAccountNumberChange = async (val: string) => {
+    setPayoutForm((p) => ({ ...p, accountNumber: val }));
+    setVerifiedName("");
+    setVerifyError("");
+    if (val.length === 10 && payoutForm.bankCode) {
+      setVerifying(true);
+      try {
+        const result = await authApi.resolveAccount(val, payoutForm.bankCode);
+        if (result.verified && result.accountName) {
+          setVerifiedName(result.accountName);
+          setPayoutForm((p) => ({ ...p, accountName: result.accountName! }));
+        } else {
+          setVerifyError(result.message || 'Could not verify account. Check details.');
+        }
+      } catch (err: any) {
+        setVerifyError(err.message || 'Verification failed. Try again.');
+      } finally {
+        setVerifying(false);
+      }
+    }
+  };
+
+  const handleBankChange = (bankName: string) => {
+    const bank = banks.find((b) => b.name === bankName);
+    setPayoutForm((p) => ({ ...p, bank: bankName, bankCode: bank?.code || "" }));
+    setVerifiedName("");
+    setVerifyError("");
+    // Auto-verify if account number already entered
+    if (payoutForm.accountNumber.length === 10 && bank?.code) {
+      handleAccountNumberChange(payoutForm.accountNumber);
+    }
+  };
+
+  const handlePayoutSave = async () => {
+    setIsSavingPayout(true);
+    setPayoutError("");
+    try {
+      const savedProfile = await authApi.savePayoutProfile({
+        bankName: payoutForm.bank,
+        accountName: verifiedName,
+        accountNumber: payoutForm.accountNumber,
+      });
+      setPayoutProfile(savedProfile);
+      setIsBankModalOpen(false);
+    } catch (err: any) {
+      setPayoutError(err.message || 'Failed to save bank details.');
+    } finally {
+      setIsSavingPayout(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       {/* Success Toast */}
       {showSuccessMessage && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 flex items-center space-x-3">
@@ -93,159 +195,32 @@ export default function Wallet() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Left Side - Logo and Navigation */}
-            <div className="flex items-center space-x-8">
-              <Link href="/">
-                <div className="w-12 h-12 flex items-center justify-center cursor-pointer">
-                  <img 
-                    src="/apex-logo.png" 
-                    alt="Apex Pathway" 
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-              </Link>
-              
-              <a href="#" className="text-gray-700 hover:text-gray-900 font-normal">
-                Explore
-              </a>
-              <a href="#" className="text-gray-700 hover:text-gray-900 font-normal">
-                Subscribe
-              </a>
-            </div>
-
-            {/* Center - Search Bar */}
-            <div className="flex-1 max-w-xl mx-8">
-              <div className="relative">
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder="Search for anything"
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600 placeholder-gray-400"
-                />
-              </div>
-            </div>
-
-            {/* Right Side Navigation */}
-            <div className="flex items-center space-x-6">
-              <a href="#" className="text-gray-700 hover:text-gray-900 font-normal text-sm">
-                Apex Business
-              </a>
-              <a href="#" className="text-gray-700 hover:text-gray-900 font-normal text-sm">
-                Become a tutor 
-              </a>
-              <Link href="/dashboard" className="text-gray-700 hover:text-gray-900 font-normal text-sm">
-                My learning
-              </Link>
-              
-              {/* Icons */}
-              <button className="text-gray-600 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </button>
-              
-              <button className="text-gray-600 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </button>
-
-              <button className="text-gray-600 hover:text-gray-900">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              </button>
-              
-              {/* User Avatar with Dropdown */}
-              <div className="relative">
-                <button 
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold cursor-pointer hover:bg-gray-800 transition-colors overflow-hidden"
-                >
-                  {userAvatar ? (
-                    <img 
-                      src={userAvatar} 
-                      alt="User avatar" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span>{userName.substring(0, 2).toUpperCase()}</span>
-                  )}
-                </button>
-
-                {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-3 border-b border-gray-200">
-                      <p className="text-sm font-semibold text-gray-900">{userName}</p>
-                      <p className="text-xs text-gray-600">maxwell@example.com</p>
-                    </div>
-
-                    <Link href="/profile" className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                      <svg className="w-5 h-5 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      Profile
-                    </Link>
-
-                    <Link href="/wallet" className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors bg-blue-50">
-                      <svg className="w-5 h-5 mr-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                      </svg>
-                      Wallet
-                    </Link>
-
-                    <Link href="/settings" className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                      <svg className="w-5 h-5 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Settings
-                    </Link>
-
-                    <Link href="/analytics" className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
-                      <svg className="w-5 h-5 mr-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                      Analytics
-                    </Link>
-
-                    <div className="border-t border-gray-200 mt-2">
-                      <button className="w-full text-left flex items-center px-4 py-3 text-sm text-red-600 hover:bg-gray-100 transition-colors">
-                        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        Log Out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Navbar */}
+      <Navbar />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-6 lg:px-8 py-12">
         {/* Page Title */}
         <h1 className="text-4xl font-bold text-gray-900 mb-8">MY WALLET</h1>
 
         {/* Balance Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-gray-600 text-sm font-medium mb-2">BALANCE</p>
-              <p className="text-5xl font-bold text-gray-900">₦ {walletData.currentBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8 relative">
+          {earningsLoading && (
+            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-xl">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
             </div>
-            <button 
-              onClick={() => setIsWithdrawModalOpen(true)}
-              className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+          )}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <div>
+              <p className="text-gray-600 text-sm font-medium mb-2">AVAILABLE BALANCE</p>
+              <p className="text-5xl font-black text-gray-900 tracking-tight">₦ {((earnings?.currentBalanceKobo || 0) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+            <button
+              onClick={() => {
+                setWithdrawError("");
+                setIsWithdrawModalOpen(true);
+              }}
+              className="w-full md:w-auto px-8 py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
             >
               WITHDRAW FUNDS
             </button>
@@ -254,94 +229,134 @@ export default function Wallet() {
 
         {/* Overview Cards */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">OVERVIEW</h2>
+          <h2 className="text-2xl font-black text-gray-900 mb-6 tracking-tight">TOTAL PERFORMANCE</h2>
           <div className="grid md:grid-cols-3 gap-6">
-            {/* Gross Sales */}
+            {/* Net Share */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <p className="text-gray-600 text-sm font-medium mb-2">GROSS SALES</p>
-              <p className="text-3xl font-bold text-gray-900">₦ {walletData.grossSales.toLocaleString('en-NG')}</p>
+              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">NET EARNINGS</p>
+              <p className="text-3xl font-black text-gray-900">₦ {((earnings?.netShareKobo || 0) / 100).toLocaleString('en-NG')}</p>
             </div>
 
-            {/* Total Profit */}
+            {/* Gross Sales */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <p className="text-gray-600 text-sm font-medium mb-2">TOTAL PROFIT</p>
-              <p className="text-3xl font-bold text-gray-900">₦ {walletData.totalProfit.toLocaleString('en-NG')}</p>
+              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">GROSS REVENUE</p>
+              <p className="text-3xl font-black text-gray-900 font-mono">₦ {((earnings?.grossSalesKobo || 0) / 100).toLocaleString('en-NG')}</p>
             </div>
 
             {/* Total Paid */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <p className="text-gray-600 text-sm font-medium mb-2">TOTAL PAID</p>
-              <p className="text-3xl font-bold text-gray-900">₦ {walletData.totalPaid.toLocaleString('en-NG')}</p>
+              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-3">TOTAL WITHDRAWN</p>
+              <p className="text-3xl font-black text-gray-900">₦ {((earnings?.withdrawnKobo || 0) / 100).toLocaleString('en-NG')}</p>
             </div>
           </div>
         </div>
 
-        {/* Recent Transactions */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">RECENT TRANSACTIONS</h2>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            {recentTransactions.map((transaction, index) => (
-              <div key={transaction.id} className={`p-6 ${index !== recentTransactions.length - 1 ? 'border-b border-gray-200' : ''}`}>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-start space-x-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold ${
-                      transaction.type === 'CREDIT' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                    }`}>
-                      {transaction.icon}
+        {/* Recent Ledger Entries */}
+        <div className="mb-12">
+          <h2 className="text-2xl font-black text-gray-900 mb-6 tracking-tight">TRANSACTION HISTORY</h2>
+          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+            {earningsLoading ? (
+              <div className="p-12 text-center text-gray-400 font-medium">Loading transactions...</div>
+            ) : (earnings?.recent.length || 0) > 0 ? (
+              earnings?.recent.map((tx, index) => (
+                <div key={tx.id} className={`p-8 ${index !== earnings.recent.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="flex items-start gap-5">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold shadow-sm ${tx.entryType === 'CREDIT' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
+                        }`}>
+                        {tx.entryType === 'CREDIT' ? '↓' : '↑'}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <p className="font-black text-gray-900 leading-none">{tx.description}</p>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter ${tx.reason === 'COURSE_SALE' ? 'bg-green-100 text-green-700' :
+                            tx.reason === 'PAYOUT' ? 'bg-blue-100 text-blue-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                            {tx.reason.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <p className="text-gray-500 text-xs font-bold tracking-widest uppercase">
+                          {new Date(tx.createdAt).toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-gray-900">{transaction.description}</p>
-                      <p className="text-gray-600 text-sm">{transaction.course}</p>
-                      <p className="text-gray-500 text-xs mt-1">{transaction.date}</p>
+                    <div className="text-right w-full sm:w-auto pt-2 sm:pt-0">
+                      <p className={`text-2xl font-black tracking-tight ${tx.entryType === 'CREDIT' ? 'text-green-600' : 'text-blue-600'}`}>
+                        {tx.entryType === 'CREDIT' ? '+' : '-'} ₦ {(tx.amountKobo / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                      </p>
+                      <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase mt-1">REF: {tx.referenceId.slice(-8).toUpperCase()}</p>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-xl font-bold ${
-                      transaction.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.type === 'CREDIT' ? '+' : '-'} ₦ {transaction.amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <p className={`text-xs font-medium mt-1 ${
-                      transaction.status === 'SUCCESS' ? 'text-green-600' : 
-                      transaction.status === 'REQUESTED' ? 'text-yellow-600' : 'text-gray-600'
-                    }`}>
-                      • {transaction.status}
-                    </p>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="p-12 text-center">
+                <p className="text-gray-500 font-medium">No transactions found.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
+
+        {/* Payout History */}
+        {payoutRequests.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-2xl font-black text-gray-900 mb-6 tracking-tight">PAYOUT REQUESTS</h2>
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+              {payoutRequests.map((req, index) => (
+                <div key={req.id} className={`p-6 ${index !== payoutRequests.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-gray-900">₦ {(req.amountKobo / 100).toLocaleString()}</p>
+                      <p className="text-xs text-gray-500">{req.bankNameSnapshot} • {req.accountNumberLast4Snapshot}</p>
+                      <p className="text-[10px] font-medium text-gray-400 mt-1 uppercase">Requested on {new Date(req.requestedAt).toLocaleDateString()}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${req.status === 'PAID' ? 'bg-green-100 text-green-700' :
+                      req.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                        'bg-yellow-100 text-yellow-700'
+                      }`}>
+                      {req.status === 'PAID' ? 'COMPLETED' : req.status === 'REQUESTED' ? 'PENDING' : req.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Payout Profile */}
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">PAYOUT PROFILE {walletData.hasBankAccount && <span className="text-green-600 text-sm">(Active)</span>}</h2>
-            {walletData.hasBankAccount && (
-              <button 
-                onClick={() => setIsBankModalOpen(true)}
+            <h2 className="text-2xl font-bold text-gray-900">PAYOUT PROFILE {payoutProfile && <span className="text-green-600 text-sm">(Active)</span>}</h2>
+            {payoutProfile && (
+              <button
+                onClick={openBankModal}
                 className="px-6 py-2 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={profileLoading}
               >
                 EDIT SETTINGS
               </button>
             )}
           </div>
 
-          {walletData.hasBankAccount ? (
+          {profileLoading ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 flex justify-center">
+              <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+          ) : payoutProfile ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="space-y-3">
                 <div>
                   <p className="text-gray-600 text-sm">BANK NAME</p>
-                  <p className="text-gray-900 font-semibold">{walletData.bankDetails.bankName}</p>
+                  <p className="text-gray-900 font-semibold">{payoutProfile.bankName}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm">ACCOUNT NAME</p>
-                  <p className="text-gray-900 font-semibold">{walletData.bankDetails.accountName}</p>
+                  <p className="text-gray-900 font-semibold">{payoutProfile.accountName}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm">ACCOUNT NUMBER</p>
-                  <p className="text-gray-900 font-semibold">******{walletData.bankDetails.accountNumberLast4}</p>
+                  <p className="text-gray-900 font-semibold">******{payoutProfile.accountNumberLast4}</p>
                 </div>
               </div>
             </div>
@@ -352,8 +367,8 @@ export default function Wallet() {
               </svg>
               <p className="text-gray-600 mb-2">No payout bank added yet.</p>
               <p className="text-gray-500 text-sm mb-6">Please add a bank account to receive withdrawals.</p>
-              <button 
-                onClick={() => setIsBankModalOpen(true)}
+              <button
+                onClick={openBankModal}
                 className="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
               >
                 ADD BANK
@@ -369,7 +384,7 @@ export default function Wallet() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900">WITHDRAW FUNDS</h3>
-              <button 
+              <button
                 onClick={() => setIsWithdrawModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -381,33 +396,40 @@ export default function Wallet() {
 
             <div className="mb-6">
               <p className="text-gray-600 mb-4">
-                Available Balance: <span className="font-bold text-gray-900">₦ {walletData.currentBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                Available Balance: <span className="font-black text-gray-900 font-mono">₦ {((earnings?.currentBalanceKobo || 0) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </p>
 
-              <label className="block text-gray-700 font-medium mb-2">
+              <label className="block text-gray-700 font-bold text-sm uppercase tracking-widest mb-2">
                 Amount to Withdraw (₦):
               </label>
               <input
                 type="number"
-                placeholder="e.g. 50000"
+                placeholder="e.g. 5000"
+                min="0"
                 value={withdrawAmount}
-                onChange={(e) => setWithdrawAmount(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (parseFloat(val) < 0) return;
+                  setWithdrawAmount(val);
+                }}
+                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold"
               />
+              {withdrawError && <p className="text-red-500 text-xs font-bold mt-2">{withdrawError}</p>}
             </div>
 
-            <div className="flex space-x-3">
+            <div className="flex gap-4">
               <button
                 onClick={() => setIsWithdrawModalOpen(false)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 py-4 border-2 border-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-all"
               >
                 CANCEL
               </button>
               <button
                 onClick={handleWithdraw}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isSubmittingWithdrawal}
+                className="flex-1 py-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 disabled:opacity-50"
               >
-                SUBMIT WITHDRAWAL
+                {isSubmittingWithdrawal ? 'WAIT...' : 'CONFIRM'}
               </button>
             </div>
           </div>
@@ -420,7 +442,7 @@ export default function Wallet() {
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900">PAYOUT BANK SETTINGS</h3>
-              <button 
+              <button
                 onClick={() => setIsBankModalOpen(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
@@ -435,25 +457,44 @@ export default function Wallet() {
                 <label className="block text-gray-700 font-medium mb-2">
                   Bank Name:
                 </label>
-                <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                  <option>Select Bank... ▼</option>
-                  <option>Access Bank</option>
-                  <option>Zenith Bank</option>
-                  <option>GTBank</option>
-                  <option>First Bank</option>
-                  <option>UBA</option>
+                <select
+                  value={payoutForm.bank}
+                  onChange={(e) => handleBankChange(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
+                >
+                  <option value="">{banksLoading ? 'Loading banks...' : 'Select a bank...'}</option>
+                  {banks.map((b) => <option key={b.code} value={b.name}>{b.name}</option>)}
                 </select>
               </div>
 
               <div>
                 <label className="block text-gray-700 font-medium mb-2">
-                  Account Number:
+                  Account Number: {payoutProfile && !payoutForm.accountNumber && <span className="text-sm font-normal text-gray-500">(Was: ******{payoutProfile.accountNumberLast4})</span>}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 0123456789"
+                  placeholder="Enter 10-digit account number"
+                  value={payoutForm.accountNumber}
+                  onChange={(e) => handleAccountNumberChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  maxLength={10}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                {verifying && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                    <svg className="w-4 h-4 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Verifying account...
+                  </div>
+                )}
+                {verifiedName && payoutForm.accountNumber.length === 10 && <div className="flex items-center gap-2 mt-2 text-sm text-green-600 font-medium whitespace-nowrap overflow-hidden">
+                  <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {verifiedName}
+                </div>}
+                {verifyError && <p className="text-sm text-red-500 mt-2">{verifyError}</p>}
               </div>
 
               <div>
@@ -462,10 +503,18 @@ export default function Wallet() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. John Doe"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Auto-filled after verification"
+                  value={payoutForm.accountName || verifiedName}
+                  readOnly
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                 />
               </div>
+
+              {payoutError && (
+                <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm border border-red-100">
+                  {payoutError}
+                </div>
+              )}
             </div>
 
             <div className="flex space-x-3">
@@ -476,15 +525,25 @@ export default function Wallet() {
                 CANCEL
               </button>
               <button
-                onClick={() => setIsBankModalOpen(false)}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                onClick={handlePayoutSave}
+                disabled={(!verifiedName && !payoutForm.accountName) || isSavingPayout}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                SAVE SETTINGS
+                {isSavingPayout ? 'SAVING...' : 'SAVE SETTINGS'}
               </button>
             </div>
           </div>
         </div>
       )}
+      <Footer />
     </div>
+  );
+}
+
+export default function Wallet() {
+  return (
+    <InstructorRoute>
+      <WalletContent />
+    </InstructorRoute>
   );
 }

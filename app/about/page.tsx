@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import Footer from '../components/Footer';
 
 export default function About() {
   const [currentFounder, setCurrentFounder] = useState(0);
@@ -42,7 +43,7 @@ export default function About() {
   }, [founders.length]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-white">
       {/* Black Banner */}
       <div className="bg-gray-900 text-white py-3 px-4 text-center">
         <p className="text-sm">
@@ -62,18 +63,13 @@ export default function About() {
             <div className="flex items-center space-x-8">
               <Link href="/">
                 <div className="w-12 h-12 flex items-center justify-center cursor-pointer">
-                  <img 
-                    src="/apex-logo.png" 
-                    alt="Apex Pathway" 
+                  <img
+                    src="/apex-logo.png"
+                    alt="Apex Pathway"
                     className="w-full h-full object-contain"
                   />
                 </div>
               </Link>
-              
-              {/* Explore link */}
-              <a href="#" className="text-gray-700 hover:text-gray-900 font-normal">
-                Explore
-              </a>
             </div>
 
             {/* Center - Search Bar */}
@@ -85,48 +81,39 @@ export default function About() {
                 <input
                   type="text"
                   placeholder="Search for courses or topics..."
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-600 placeholder-gray-400"
+                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white placeholder-gray-500"
                 />
               </div>
             </div>
 
-            {/* Right Side Navigation */}
-            <div className="flex items-center space-x-8">
-              <Link href="/about" className="text-gray-700 hover:text-gray-900 font-normal">
-                About
-              </Link>
-              <a href="#" className="text-gray-700 hover:text-gray-900 font-normal">
-                FAQs
-              </a>
-              <a href="#" className="text-blue-600 hover:text-blue-700 font-normal">
-                Become a Tutor
-              </a>
-              
+            {/* Right Side - Actions */}
+            <div className="flex items-center space-x-6">
               {/* Cart Icon */}
               <button className="text-gray-600 hover:text-gray-900">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
               </button>
-              
-              {/* Auth Buttons */}
-              <Link href="/login">
-                <button className="px-8 py-2.5 text-blue-600 border-2 border-blue-600 rounded-full hover:bg-blue-50 transition-colors font-medium">
-                  Log In
-                </button>
-              </Link>
-              <Link href="/signup">
-                <button className="px-8 py-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium">
-                  Sign Up
-                </button>
-              </Link>
+
+              <div className="flex items-center space-x-4">
+                <Link href="/login">
+                  <button className="px-8 py-2.5 text-blue-600 border-2 border-blue-600 rounded-full hover:bg-blue-50 transition-colors font-medium">
+                    Log In
+                  </button>
+                </Link>
+                <Link href="/signup">
+                  <button className="px-8 py-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium">
+                    Sign Up
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 lg:px-8 py-20">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-6 lg:px-8 py-20">
         <div className="grid md:grid-cols-2 gap-16 items-center">
           {/* Left Side - Text Content */}
           <div className="space-y-8">
@@ -154,7 +141,7 @@ export default function About() {
             </div>
 
             {/* Founder Quote with Fade Transition */}
-            <div 
+            <div
               key={currentFounder}
               className="animate-fadeIn"
             >
@@ -185,11 +172,10 @@ export default function About() {
                 <button
                   key={index}
                   onClick={() => setCurrentFounder(index)}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    index === currentFounder 
-                      ? 'w-8 bg-blue-600' 
-                      : 'w-2 bg-gray-300 hover:bg-gray-400'
-                  }`}
+                  className={`h-2 rounded-full transition-all duration-300 ${index === currentFounder
+                    ? 'w-8 bg-blue-600'
+                    : 'w-2 bg-gray-300 hover:bg-gray-400'
+                    }`}
                   aria-label={`Go to founder ${index + 1}`}
                 />
               ))}
@@ -198,11 +184,11 @@ export default function About() {
 
           {/* Right Side - Image with Fade Transition */}
           <div className="relative">
-            <div 
+            <div
               key={currentFounder}
               className="animate-fadeIn"
             >
-              <img 
+              <img
                 src={founders[currentFounder].image}
                 alt={founders[currentFounder].name}
                 className="w-full h-[600px] object-cover rounded-2xl shadow-2xl"
@@ -210,10 +196,10 @@ export default function About() {
             </div>
           </div>
         </div>
-      </main>
+      </main >
 
       {/* Add custom animations to globals.css */}
-      <style jsx global>{`
+      < style jsx global > {`
         @keyframes fadeIn {
           from {
             opacity: 0;
@@ -228,7 +214,8 @@ export default function About() {
         .animate-fadeIn {
           animation: fadeIn 1s ease-in-out;
         }
-      `}</style>
-    </div>
+      `}</style >
+      <Footer />
+    </div >
   );
 }
