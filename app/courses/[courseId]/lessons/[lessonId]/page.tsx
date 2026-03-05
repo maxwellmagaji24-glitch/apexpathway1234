@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { authApi, CourseProgressResponse, LessonContent, Lesson } from '../../../../api/authApi';
 import { ProtectedRoute } from '../../../../components/RouteGuard';
 import Navbar from '../../../../components/Navbar';
+import Footer from '../../../../components/Footer';
 import LessonSidebar from '../../../../components/LessonSidebar';
+import { usePrivateFile } from '../../../../hooks/usePrivateFile';
 
 function LessonPlayerContent() {
     const params = useParams();
@@ -19,6 +22,11 @@ function LessonPlayerContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [isContentLoading, setIsContentLoading] = useState(true);
     const [error, setError] = useState('');
+
+    // PDF secure fetch
+    const { url: pdfBlobUrl, loading: isPdfFetching } = usePrivateFile(
+        currentLesson?.type === 'PDF' ? (currentLesson.pdfFileId || currentLesson.pdfAccessUrl?.split('/').pop()) : null
+    );
 
     // Flattened lessons for navigation
     const allLessons = useMemo(() => {
@@ -128,6 +136,16 @@ function LessonPlayerContent() {
         <div className="min-h-screen bg-gray-50 flex flex-col overflow-hidden">
             <Navbar />
 
+            <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-6">
+                <nav className="flex items-center text-sm text-gray-500">
+                    <Link href="/my-learning" className="hover:text-blue-600 transition-colors">My Learning</Link>
+                    <span className="mx-2">/</span>
+                    <span className="text-gray-900 font-medium truncate max-w-[200px]">{courseData.course.title}</span>
+                    <span className="mx-2">/</span>
+                    <span className="text-blue-600 font-semibold truncate max-w-[200px]">{currentLesson?.title || 'Loading...'}</span>
+                </nav>
+            </div>
+
             <div className="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-6 gap-6">
                 {/* Main Content Area (65%) */}
                 <div className="flex-1 overflow-y-auto bg-gray-900 flex flex-col rounded-3xl overflow-hidden shadow-sm border border-gray-200/20">
@@ -151,12 +169,12 @@ function LessonPlayerContent() {
                                 </svg>
                                 <p className="text-xl font-medium mb-6 text-center">This lesson is a PDF Document</p>
                                 <a
-                                    href={currentLesson?.pdfAccessUrl}
+                                    href={pdfBlobUrl || currentLesson?.pdfAccessUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors shadow-lg"
+                                    className={`px-8 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition-colors shadow-lg ${(isPdfFetching || !pdfBlobUrl) ? 'opacity-50 pointer-events-none' : ''}`}
                                 >
-                                    View PDF in New Tab
+                                    {isPdfFetching ? 'Loading PDF...' : 'View PDF in New Tab'}
                                 </a>
                             </div>
                         )}
@@ -236,6 +254,7 @@ function LessonPlayerContent() {
                     />
                 </div>
             </div>
+            <Footer />
         </div >
     );
 }

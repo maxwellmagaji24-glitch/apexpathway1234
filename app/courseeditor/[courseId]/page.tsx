@@ -37,33 +37,31 @@ function CurriculumEditorContent() {
     const fetchCourse = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await authApi.getInstructorCourse(courseId as string);
-            // Handle cases where response might be wrapped in a 'data' property
-            const result: any = (data as any).data || data;
+            const rawData = await authApi.getInstructorCourse(courseId as string);
+            console.log("Instructor course response:", rawData);
 
-            // If sections are missing or empty, try fetching from the curriculum-heavy endpoint
-            if (!result.sections || result.sections.length === 0) {
-                try {
-                    const curriculumData = await authApi.getCourseLessons(courseId as string);
-                    if (curriculumData && curriculumData.sections) {
-                        result.sections = curriculumData.sections;
-                    }
-                } catch (cErr) {
-                    console.warn("Curriculum fallback failed", cErr);
-                }
+            // Unwrap response — only if .data is an actual course object (has an id)
+            let courseData: any = rawData;
+            if (
+                (rawData as any)?.data &&
+                typeof (rawData as any).data === 'object' &&
+                !Array.isArray((rawData as any).data) &&
+                (rawData as any).data.id
+            ) {
+                courseData = (rawData as any).data;
             }
 
-            // Ensure sections exist and have lessons array
-            if (result && result.sections) {
-                result.sections = result.sections.map((s: any) => ({
+            // Ensure sections exist and each section has a lessons array
+            if (courseData && Array.isArray(courseData.sections)) {
+                courseData.sections = courseData.sections.map((s: any) => ({
                     ...s,
-                    lessons: s.lessons || []
+                    lessons: Array.isArray(s.lessons) ? s.lessons : []
                 }));
-            } else if (result && !result.sections) {
-                result.sections = [];
+            } else if (courseData) {
+                courseData.sections = [];
             }
 
-            setCourse(result);
+            setCourse(courseData);
         } catch (err: any) {
             setError(err.message || "Failed to load course details.");
         } finally {
@@ -176,12 +174,10 @@ function CurriculumEditorContent() {
             <main className="flex-1 w-full max-w-5xl mx-auto px-6 lg:px-8 py-12 pb-20">
                 <div className="flex justify-between items-end mb-10">
                     <div>
-                        <nav className="flex items-center text-xs font-black uppercase tracking-widest text-gray-400 mb-4 gap-2">
-                            <Link href="/instructorsdashboard" className="hover:text-blue-600">Dashboard</Link>
-                            <span>/</span>
-                            <Link href="/courseeditor" className="hover:text-blue-600">Editor</Link>
-                            <span>/</span>
-                            <span className="text-gray-900">Curriculum</span>
+                        <nav className="flex items-center text-xs font-black uppercase tracking-widest text-gray-400 mb-6 gap-2">
+                            <Link href="/instructorsdashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+                            <span className="text-gray-300">/</span>
+                            <span className="text-gray-900">Curriculum Editor</span>
                         </nav>
                         <h1 className="text-4xl font-black text-gray-900 mb-2 uppercase tracking-tight">{course?.title}</h1>
                         <p className="text-gray-500 font-bold uppercase text-xs tracking-widest">Master Curriculum Builder</p>

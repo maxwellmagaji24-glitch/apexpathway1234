@@ -2,7 +2,7 @@
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { authApi, InstructorAnalyticsResponse, BASE_URL } from '../api/authApi';
+import { authApi, InstructorAnalyticsResponse, BASE_URL, UPLOAD_URL } from '../api/authApi';
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useUser } from '../context/UserContext';
@@ -11,9 +11,16 @@ import { InstructorRoute } from '../components/RouteGuard';
 function InstructorDashboardContent() {
   const { user } = useUser();
   const userName = user?.fullName?.split(' ')[0] || 'Instructor';
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [userAvatar, setUserAvatar] = useState<string | null>(user?.avatarId ? `${BASE_URL}/uploads/public/${user.avatarId}` : null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (user?.avatarId) {
+      setUserAvatar(`${UPLOAD_URL}/public/${user.avatarId}`);
+    } else {
+      setUserAvatar(null);
+    }
+  }, [user]);
 
   const [analytics, setAnalytics] = useState<InstructorAnalyticsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,8 +28,19 @@ function InstructorDashboardContent() {
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const data = await authApi.getInstructorAnalytics();
-        setAnalytics(data);
+        const [analyticsData, coursesData] = await Promise.all([
+          authApi.getInstructorAnalytics(),
+          authApi.getInstructorCourses().catch(() => []) // Fallback in case it fails
+        ]);
+
+        // Merge thumbnail info
+        const thumbnailMap = new Map(coursesData.map(c => [c.id, c.thumbnailId]));
+        const mergedCourses = analyticsData.courses.map(course => ({
+          ...course,
+          thumbnailId: thumbnailMap.get(course.id) || null
+        }));
+
+        setAnalytics({ ...analyticsData, courses: mergedCourses });
       } catch (err) {
         console.error("Failed to load dashboard analytics", err);
       } finally {
@@ -82,11 +100,9 @@ function InstructorDashboardContent() {
       {/* Main Content */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 lg:px-8 py-12">
         {/* Breadcrumb */}
-        <div className="text-sm text-gray-600 mb-6">
-          <Link href="/" className="hover:text-blue-600">Home</Link>
-          <span className="mx-2">›</span>
+        <nav className="flex items-center text-xs font-black uppercase tracking-widest text-gray-400 mb-6 gap-2">
           <span className="text-gray-900">Instructor Dashboard</span>
-        </div>
+        </nav>
 
         {/* Page Title */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center gap-5">
@@ -150,9 +166,9 @@ function InstructorDashboardContent() {
                   <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                     {/* Thumbnail */}
                     <div className="w-full md:w-48 h-32 bg-gray-100 rounded-2xl overflow-hidden flex-shrink-0 shadow-inner">
-                      {(course as any).thumbnail ? (
+                      {((course as any).thumbnailId || (course as any).thumbnailUrl || (course as any).thumbnail) ? (
                         <img
-                          src={(course as any).thumbnail}
+                          src={`${UPLOAD_URL}/public/${(course as any).thumbnailId || (course as any).thumbnailUrl || (course as any).thumbnail}`}
                           alt={course.title}
                           className="w-full h-full object-cover"
                         />

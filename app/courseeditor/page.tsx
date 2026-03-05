@@ -90,12 +90,11 @@ function CourseEditorContent() {
             <Navbar />
 
             <main className="flex-1 max-w-4xl mx-auto w-full px-6 lg:px-8 py-12 pb-20">
-                <Link href="/instructorsdashboard" className="text-sm text-gray-500 hover:text-blue-600 mb-6 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to Dashboard
-                </Link>
+                <nav className="flex items-center text-xs font-black uppercase tracking-widest text-gray-400 mb-6 gap-2">
+                    <Link href="/instructorsdashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+                    <span className="text-gray-300">/</span>
+                    <span className="text-gray-900">Create Course</span>
+                </nav>
 
                 <div className="mb-10">
                     <h1 className="text-4xl font-black text-gray-900 mb-2">CREATE NEW COURSE</h1>

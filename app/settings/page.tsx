@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser } from '../context/UserContext';
-import { authApi, Bank, BASE_URL } from '../api/authApi';
+import { authApi, Bank, BASE_URL, UPLOAD_URL } from '../api/authApi';
 import { ProtectedRoute } from '../components/RouteGuard';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -33,8 +33,16 @@ const universities = ["LAUTECH", "University of Lagos", "University of Ibadan", 
 function SettingsContent() {
   const { user, isInstructor, refreshUser } = useUser();
   const [activeTab, setActiveTab] = useState("profile");
-  const [userAvatar, setUserAvatar] = useState<string | null>(user?.avatarId ? `${BASE_URL}/uploads/public/${user.avatarId}` : null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (user?.avatarId) {
+      setUserAvatar(`${UPLOAD_URL}/public/${user.avatarId}`);
+    } else {
+      setUserAvatar(null);
+    }
+  }, [user]);
   const userName = user?.fullName?.split(' ')[0] || 'User';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -198,7 +206,7 @@ function SettingsContent() {
       <div className="flex-1 w-full flex flex-col">
         <div className="max-w-7xl mx-auto w-full px-6 lg:px-8 pt-6">
           <nav className="flex items-center text-sm text-gray-500">
-            <Link href="/" className="hover:text-blue-600 transition-colors">Home</Link>
+            <Link href="/dashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
             <span className="mx-2">/</span>
             <span className="text-gray-900 font-medium">Settings</span>
           </nav>

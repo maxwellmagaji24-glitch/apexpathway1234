@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { authApi, EnrolledCourse } from '../api/authApi';
+import { authApi, EnrolledCourse, BASE_URL, UPLOAD_URL } from '../api/authApi';
 import { ProtectedRoute } from '../components/RouteGuard';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -60,8 +60,6 @@ function MyLearningContent() {
 
             <main className="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-8 py-12">
                 <nav className="flex items-center text-sm text-gray-500 mb-8">
-                    <Link href="/" className="hover:text-blue-600">Home</Link>
-                    <span className="mx-2">/</span>
                     <span className="text-gray-900 font-medium">My Learning</span>
                 </nav>
 
@@ -114,7 +112,7 @@ function MyLearningContent() {
                                     {/* Thumbnail */}
                                     <div className="relative h-48 overflow-hidden bg-gray-100">
                                         <img
-                                            src={course.thumbnailUrl || '/course-placeholder.png'}
+                                            src={course.thumbnailUrl ? `${UPLOAD_URL}/public/${course.thumbnailUrl}` : '/course-placeholder.png'}
                                             alt={course.title}
                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                         />

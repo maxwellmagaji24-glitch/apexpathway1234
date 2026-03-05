@@ -103,8 +103,6 @@ function InstructorAnalyticsContent() {
         `}</style>
 
         <nav className="flex items-center text-sm text-gray-500 mb-8">
-          <Link href="/" className="hover:text-blue-600">Home</Link>
-          <span className="mx-2">/</span>
           <Link href="/instructorsdashboard" className="hover:text-blue-600">Instructor Dashboard</Link>
           <span className="mx-2">/</span>
           <span className="text-gray-900 font-medium">Analytics</span>

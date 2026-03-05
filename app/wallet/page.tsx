@@ -200,8 +200,15 @@ function WalletContent() {
 
       {/* Main Content */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 lg:px-8 py-12">
+        {/* Breadcrumb */}
+        <nav className="flex items-center text-xs font-black uppercase tracking-widest text-gray-400 mb-6 gap-2">
+          <Link href="/instructorsdashboard" className="hover:text-blue-600 transition-colors">Dashboard</Link>
+          <span className="text-gray-300">/</span>
+          <span className="text-gray-900">My Wallet</span>
+        </nav>
+
         {/* Page Title */}
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">MY WALLET</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-8 uppercase tracking-tight">MY WALLET</h1>
 
         {/* Balance Card */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8 relative">

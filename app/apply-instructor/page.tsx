@@ -176,7 +176,7 @@ function ApplyInstructorContent() {
                 <Navbar />
                 <div className="flex-1 max-w-2xl mx-auto px-6 py-12">
                     <nav className="flex items-center text-sm text-gray-500 mb-8">
-                        <Link href="/" className="hover:text-blue-600">Home</Link>
+                        <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link>
                         <span className="mx-2">/</span>
                         <Link href="/settings" className="hover:text-blue-600">Settings</Link>
                         <span className="mx-2">/</span>
@@ -242,7 +242,7 @@ function ApplyInstructorContent() {
                 <Navbar />
                 <div className="flex-1 max-w-2xl mx-auto px-6 py-12">
                     <nav className="flex items-center text-sm text-gray-500 mb-8">
-                        <Link href="/" className="hover:text-blue-600">Home</Link>
+                        <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link>
                         <span className="mx-2">/</span>
                         <Link href="/settings" className="hover:text-blue-600">Settings</Link>
                         <span className="mx-2">/</span>
@@ -295,7 +295,7 @@ function ApplyInstructorContent() {
             <Navbar />
             <div className="flex-1 max-w-2xl mx-auto px-6 py-12">
                 <nav className="flex items-center text-sm text-gray-500 mb-8">
-                    <Link href="/" className="hover:text-blue-600">Home</Link>
+                    <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link>
                     <span className="mx-2">/</span>
                     <Link href="/settings" className="hover:text-blue-600">Settings</Link>
                     <span className="mx-2">/</span>

@@ -7,7 +7,7 @@ import { useUser } from '../context/UserContext';
 import { ProtectedRoute } from '../components/RouteGuard';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import { authApi, BASE_URL, EnrolledCourse, PublicCourse } from '../api/authApi';
+import { authApi, BASE_URL, UPLOAD_URL, EnrolledCourse, PublicCourse } from '../api/authApi';
 
 function DashboardContent() {
   const { user } = useUser();
@@ -16,9 +16,16 @@ function DashboardContent() {
   const router = useRouter();
   const searchQuery = searchParams.get('q') || "";
 
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [userAvatar, setUserAvatar] = useState<string | null>(user?.avatarId ? `${BASE_URL}/uploads/public/${user.avatarId}` : null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (user?.avatarId) {
+      setUserAvatar(`${UPLOAD_URL}/public/${user.avatarId}`);
+    } else {
+      setUserAvatar(null);
+    }
+  }, [user]);
 
   const [courses, setCourses] = useState<EnrolledCourse[]>([]);
   const [exploreCourses, setExploreCourses] = useState<PublicCourse[]>([]);
@@ -91,8 +98,6 @@ function DashboardContent() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 lg:px-8 py-12">
         {/* Breadcrumb */}
         <nav className="flex items-center text-sm text-gray-500 mb-8">
-          <Link href="/" className="hover:text-blue-600">Home</Link>
-          <span className="mx-2">/</span>
           <span className="text-gray-900 font-medium">Dashboard</span>
         </nav>
 
@@ -143,7 +148,7 @@ function DashboardContent() {
                 <Link key={course.id} href={`/courses/${course.id}/lessons/start`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer block">
                   <div className="relative">
                     <img
-                      src={course.thumbnailUrl ? `${BASE_URL}${course.thumbnailUrl}` : '/course-thumb-1.png'}
+                      src={course.thumbnailUrl ? `${UPLOAD_URL}/public/${course.thumbnailUrl}` : '/course-thumb-1.png'}
                       alt="Course thumbnail"
                       className="w-full h-48 object-cover"
                     />
@@ -237,7 +242,7 @@ function DashboardContent() {
                   <div className="h-48 bg-gray-100 relative overflow-hidden">
                     {course.thumbnailId ? (
                       <img
-                        src={`${BASE_URL}/uploads/public/${course.thumbnailId}`}
+                        src={`${UPLOAD_URL}/public/${course.thumbnailId}`}
                         alt={course.title}
                         className="w-full h-full object-cover"
                       />

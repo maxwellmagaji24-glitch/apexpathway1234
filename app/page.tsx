@@ -1,12 +1,22 @@
 'use client';
-import { useState } from 'react';
-import { useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from "next/image";
 import Link from 'next/link'
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import { useUser } from './context/UserContext';
+import { useRouter } from 'next/navigation';
+
 export default function Home() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { user } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {

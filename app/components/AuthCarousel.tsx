@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react';
 
 const images = [
-    "https://images.unsplash.com/photo-1531844251246-9d42fa6c5602?auto=format&fit=crop&q=80&w=1000",
-    "https://images.unsplash.com/photo-1589167158051-4c602379c118?auto=format&fit=crop&q=80&w=1000",
-    "https://images.unsplash.com/photo-1507537297725-24a19f48d3e0?auto=format&fit=crop&q=80&w=1000",
-    "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=1000"
+    "/black_student_studying_1.png",
+    "/black_student_collaboration_2.png",
+    "/black_student_success_3.png"
 ];
 
 const quotes = [

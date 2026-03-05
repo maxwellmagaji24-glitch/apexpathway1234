@@ -1,4 +1,5 @@
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+export const UPLOAD_URL = '/uploads';
 
 export type AuthResponse = {
   accessToken: string;
@@ -108,6 +109,7 @@ export type LessonContent = {
   title: string;
   type: 'YOUTUBE' | 'PDF';
   videoId?: string;
+  pdfFileId?: string;
   pdfAccessUrl?: string; // Add this if needed
   order: number;
   courseTitle: string;
@@ -294,6 +296,7 @@ export type InstructorAnalyticsCourse = {
   studentCount: number;
   revenueKobo: number;
   avgCompletion: number;
+  thumbnailId?: string | null;
 };
 
 export type InstructorAnalyticsResponse = {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { authApi, Order } from '../../api/authApi';
 import { ProtectedRoute } from '../../components/RouteGuard';
 import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
 
 function OrdersContent() {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -144,6 +145,7 @@ function OrdersContent() {
                     </div>
                 )}
             </div>
+            <Footer />
         </div>
     );
 }

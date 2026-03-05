@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '../../api/authApi';
 import { ProtectedRoute } from '../../components/RouteGuard';
 import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
 import Link from 'next/link';
 
 function PaymentCallbackContent() {
@@ -107,6 +108,7 @@ function PaymentCallbackContent() {
 
                 </div>
             </main>
+            <Footer />
         </div>
     );
 }

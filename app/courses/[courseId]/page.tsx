@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi, PublicCourse, EnrolledCourse, BASE_URL } from '../../api/authApi';
+import { authApi, PublicCourse, EnrolledCourse, BASE_URL, UPLOAD_URL } from '../../api/authApi';
 import { useUser } from '../../context/UserContext';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
@@ -147,58 +147,62 @@ export default function CourseDetailPage() {
             <div className="flex-1 w-full flex flex-col">
 
                 {/* Banner / Header */}
-                <div className="bg-white border-b border-gray-200">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 md:py-12">
-                        <div className="flex flex-col lg:flex-row gap-12">
+                <div className="bg-gray-900 border-b border-gray-800 text-white">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10 lg:py-16 relative">
+                        <div className="w-full lg:w-[calc(100%-400px)] lg:pr-12">
                             {/* Course Info */}
-                            <div className="flex-1">
-                                <nav className="flex items-center text-sm text-gray-500 mb-4">
-                                    <Link href="/" className="hover:text-blue-600">Home</Link>
-                                    <span className="mx-2">/</span>
-                                    <Link href={isEnrolled ? "/my-learning" : "/courses"} className="hover:text-blue-600">
-                                        {isEnrolled ? "My Learning" : "Courses"}
-                                    </Link>
-                                    <span className="mx-2">/</span>
-                                    <span className="text-gray-900 font-medium truncate">{course.title}</span>
-                                </nav>
+                            <nav className="flex items-center text-sm text-gray-400 mb-6">
+                                <Link href={isEnrolled ? "/my-learning" : "/dashboard"} className="hover:text-gray-200 transition-colors">
+                                    {isEnrolled ? "My Learning" : "Dashboard"}
+                                </Link>
+                                <span className="mx-2">/</span>
+                                <span className="text-gray-100 font-medium truncate">{course.title}</span>
+                            </nav>
 
-                                <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-6 leading-tight">
-                                    {course.title}
-                                </h1>
-                                <p className="text-xl text-gray-600 mb-8 leading-relaxed max-w-3xl">
-                                    {course.description}
-                                </p>
+                            <h1 className="text-3xl md:text-5xl font-extrabold text-white mb-6 leading-tight">
+                                {course.title}
+                            </h1>
+                            <p className="text-lg md:text-xl text-gray-300 mb-8 leading-relaxed max-w-3xl">
+                                {course.description}
+                            </p>
 
-                                <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600">
-                                    <div className="flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <span>{course.language}</span>
+                            <div className="flex flex-wrap items-center gap-6 text-sm text-gray-300">
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <span>{course.language}</span>
+                                </div>
+
+                                <div className="flex items-center gap-3 border-l pl-6 border-gray-700">
+                                    <div className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden">
+                                        {course.instructor?.avatarId ? (
+                                            <img
+                                                src={`${UPLOAD_URL}/public/${course.instructor.avatarId}`}
+                                                alt={course.instructor.fullName}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            course.instructor?.fullName?.[0] || 'I'
+                                        )}
                                     </div>
-
-                                    <div className="flex items-center gap-3 border-l pl-6 border-gray-200">
-                                        <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold text-xs uppercase overflow-hidden">
-                                            {course.instructor?.avatarId ? (
-                                                <img
-                                                    src={`${BASE_URL}/uploads/public/${course.instructor.avatarId}`}
-                                                    alt={course.instructor.fullName}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                course.instructor?.fullName?.[0] || 'I'
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-gray-900">{course.instructor?.fullName || 'Instructor'}</p>
-                                            {course.instructor?.instructorProfile?.department && (
-                                                <p className="text-xs">{course.instructor.instructorProfile.department}</p>
-                                            )}
-                                        </div>
+                                    <div>
+                                        <p className="font-semibold text-white">{course.instructor?.fullName || 'Instructor'}</p>
+                                        {course.instructor?.instructorProfile?.department && (
+                                            <p className="text-xs text-gray-400">{course.instructor.instructorProfile.department}</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
 
-                            {/* Right Column: CTA/Progress Card */}
-                            <div className="w-full lg:w-[400px]">
+                {/* Main Content Sections */}
+                <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10 w-full relative">
+                    <div className="flex flex-col lg:flex-row gap-10 lg:gap-12 items-start">
+
+                        {/* Right Column: CTA/Progress Card (Moved outside! Overlaps banner on desktop) */}
+                        <div className="w-full lg:w-[380px] lg:-mt-[340px] z-10 order-1 lg:order-2 mb-8 lg:mb-0">
+                            <div className="sticky top-24">
                                 {isEnrolled ? (
                                     /* Enrolled View: Progress Widget */
                                     <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 sticky top-28">
@@ -229,15 +233,16 @@ export default function CourseDetailPage() {
                                 ) : (
                                     /* Marketing View: Purchase Card */
                                     <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden sticky top-28">
-                                        <div className="aspect-video bg-gray-900 relative group cursor-pointer">
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 group-hover:scale-110 transition-transform">
-                                                    <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                                                    </svg>
-                                                </div>
-                                            </div>
-                                            <p className="absolute bottom-4 left-0 right-0 text-center text-white/70 text-sm font-medium">Watch Preview</p>
+                                        <div className="aspect-video relative group cursor-pointer overflow-hidden bg-gray-100">
+                                            {course.thumbnailId ? (
+                                                <img
+                                                    src={`${UPLOAD_URL}/public/${course.thumbnailId}`}
+                                                    alt={course.title}
+                                                    className="w-full h-full object-cover transition-transform duration-500"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 opacity-20" />
+                                            )}
                                         </div>
 
                                         <div className="p-8">
@@ -282,29 +287,21 @@ export default function CourseDetailPage() {
                                 )}
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                {/* Main Content Sections */}
-                <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16">
-                    <div className="grid lg:grid-cols-3 gap-16">
                         {/* Left/Middle Column (About & Curriculum) */}
-                        <div className="lg:col-span-2 space-y-16">
+                        <div className="flex-1 w-full lg:w-[calc(100%-420px)] space-y-12 order-2 lg:order-1">
                             {/* What you'll learn */}
                             <section>
-                                <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-3">
-                                    <span className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                                    </span>
-                                    What you will learn
-                                </h2>
-                                <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
-                                    {course.whatYouWillLearn.map((item, i) => (
-                                        <div key={i} className="flex items-start gap-3">
-                                            <svg className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                            <span className="text-gray-700 text-base">{item}</span>
-                                        </div>
-                                    ))}
+                                <div className="border border-gray-200 bg-white rounded-lg p-6 sm:p-8">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-6">What you'll learn</h2>
+                                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-4">
+                                        {course.whatYouWillLearn.map((item, i) => (
+                                            <div key={i} className="flex items-start gap-3">
+                                                <svg className="w-5 h-5 text-gray-900 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                <span className="text-gray-700 text-sm leading-relaxed">{item}</span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </section>
 
@@ -408,7 +405,15 @@ export default function CourseDetailPage() {
                                 <div className="bg-white rounded-3xl p-8 border border-gray-200">
                                     <div className="flex items-center gap-6 mb-6">
                                         <div className="w-20 h-20 bg-gray-900 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
-                                            {course.instructor?.fullName?.[0] || 'I'}
+                                            {course.instructor?.avatarId ? (
+                                                <img
+                                                    src={`${UPLOAD_URL}/public/${course.instructor.avatarId}`}
+                                                    alt={course.instructor.fullName}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                course.instructor?.fullName?.[0] || 'I'
+                                            )}
                                         </div>
                                         <div>
                                             <h3 className="text-xl font-bold text-gray-900">{course.instructor?.fullName || 'Instructor'}</h3>
@@ -423,9 +428,6 @@ export default function CourseDetailPage() {
                                 </div>
                             </section>
                         </div>
-
-                        {/* Empty Space for sidebar padding if needed */}
-                        <div className="hidden lg:block h-20"></div>
                     </div>
                 </div>
             </div>

@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { authApi, Cart, CartItem } from '../api/authApi';
-import { useUser } from '../context/UserContext';
-import { ProtectedRoute } from '../components/RouteGuard';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { useUser } from '../context/UserContext';
+import { ProtectedRoute } from '../components/RouteGuard';
+import { authApi, Cart, CartItem, BASE_URL, UPLOAD_URL } from '../api/authApi';
 
 function CartContent() {
     const router = useRouter();
@@ -96,7 +96,7 @@ function CartContent() {
 
             <main className="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-8 py-12">
                 <nav className="flex items-center text-sm text-gray-500 mb-8">
-                    <Link href="/" className="hover:text-blue-600">Home</Link>
+                    <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link>
                     <span className="mx-2">/</span>
                     <span className="text-gray-900 font-medium">Cart</span>
                 </nav>
@@ -144,8 +144,12 @@ function CartContent() {
                                             <div key={item.id} className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 group hover:bg-gray-50 transition-colors">
                                                 {/* Thumbnail (or placeholder) */}
                                                 <div className="w-full sm:w-32 aspect-video bg-gray-900 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center relative">
-                                                    {item.thumbnailUrl ? (
-                                                        <img src={item.thumbnailUrl} alt={item.title} className="w-full h-full object-cover" />
+                                                    {(item as any).thumbnailUrl || (item as any).thumbnailId ? (
+                                                        <img
+                                                            src={`${UPLOAD_URL}/public/${(item as any).thumbnailUrl || (item as any).thumbnailId}`}
+                                                            alt={item.title}
+                                                            className="w-full h-full object-cover"
+                                                        />
                                                     ) : (
                                                         <div className="text-white/20">
                                                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
