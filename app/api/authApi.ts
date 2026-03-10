@@ -157,12 +157,12 @@ export type InstructorApplicationPayload = {
 
 export type InstructorCreateCoursePayload = {
   title: string;
-  description: string;
-  priceKobo: number;
-  courseCode: string;
+  description?: string;
+  priceKobo?: number;
+  courseCode?: string;
   thumbnailId?: string;
-  language: string;
-  whatYouWillLearn: string[];
+  language?: string;
+  whatYouWillLearn?: string[];
   previewVideoId?: string;
 };
 
@@ -591,22 +591,34 @@ export const authApi = {
   getInstructorCourse: (id: string) =>
     authenticatedRequest<PublicCourse>(`/courses/instructor/${id}`),
 
-  createCourse: (payload: InstructorCreateCoursePayload, thumbnailFile?: File) => {
+  createCourse: (payload: { title: string }) => {
+    return authenticatedRequest<PublicCourse>('/courses/instructor', { 
+      method: 'POST', 
+      body: JSON.stringify(payload) 
+    });
+  },
+
+  updateCourse: (id: string, payload: Partial<InstructorCreateCoursePayload>, thumbnailFile?: File) => {
     const formData = new FormData();
-    formData.append('title', payload.title);
-    formData.append('description', payload.description);
-    formData.append('priceKobo', Math.floor(Number(payload.priceKobo) || 0).toString());
-    formData.append('courseCode', payload.courseCode);
-    formData.append('language', payload.language);
+    if (payload.title) formData.append('title', payload.title);
+    if (payload.description !== undefined) formData.append('description', payload.description);
+    if (payload.priceKobo !== undefined) formData.append('priceKobo', Math.floor(Number(payload.priceKobo) || 0).toString());
+    if (payload.courseCode) formData.append('courseCode', payload.courseCode);
+    if (payload.language) formData.append('language', payload.language);
     if (payload.whatYouWillLearn) {
       payload.whatYouWillLearn.forEach(item => formData.append('whatYouWillLearn', item));
     }
     if (payload.previewVideoId) formData.append('previewVideoId', payload.previewVideoId);
+    
     // Inline file upload
     if (thumbnailFile) formData.append('thumbnail', thumbnailFile);
     // Backward compat
     if (!thumbnailFile && payload.thumbnailId) formData.append('thumbnailId', payload.thumbnailId);
-    return authenticatedRequest<PublicCourse>('/courses/instructor', { method: 'POST', body: formData });
+
+    return authenticatedRequest<PublicCourse>(`/courses/instructor/${id}`, { 
+      method: 'PATCH', 
+      body: formData 
+    });
   },
 
   addSection: (courseId: string, title: string) =>
